@@ -87,7 +87,7 @@ Route::group(['namespace' => 'App\Http\Controllers'],function()
         Route::get('student/grid', 'studentGrid')->middleware('auth')->name('student/grid'); // grid student
         Route::get('student/add/page', 'studentAdd')->middleware('auth')->name('student/add/page'); // page student
         Route::post('student/add/save', 'studentSave')->name('student/add/save'); // save record student
-        Route::get('student/edit/{id}', 'studentEdit'); // view for edit
+        Route::get('student/edit/{id}', 'studentEdit')->name('student/edit');
         Route::post('student/update', 'studentUpdate')->name('student/update'); // update record student
         Route::post('student/delete', 'studentDelete')->name('student/delete'); // delete record student
         Route::get('student/profile/{id}', 'studentProfile')->middleware('auth'); // profile student

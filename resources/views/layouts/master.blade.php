@@ -26,8 +26,8 @@
     <div class="main-wrapper">
         <div class="header">
             <div class="header-left">
-                <a href="{{ route('home') }}" class="logo">
-                    <img src="{{ URL::to('assets/img/logo.png') }}" alt="Logo">
+                <a href="{{ route('home') }}" class="logo h4" style="color: black ; font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;">
+                    SchoolManagement
                 </a>
                 <a href="{{ route('home') }}" class="logo logo-small">
                     <img src="{{ URL::to('assets/img/logo-small.png') }}" alt="Logo" width="30" height="30">
@@ -57,7 +57,7 @@
                         <div class="noti-content">
                             <div>
                                 <a class="dropdown-item" href="javascript:;"><i class="flag flag-lr me-2"></i>English</a>
-                                <a class="dropdown-item" href="javascript:;"><i class="flag flag-kh me-2"></i>Khmer</a>
+                              
                             </div>
                         </div>
                     </div>
