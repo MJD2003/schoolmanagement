@@ -37,16 +37,12 @@
                                         <div class="col-xl-4 col-md-6 col-sm-12 col-12">
                                             <div class="form-group">
                                                 <label>Customer Name</label>
-                                                <select class="select select2s-hidden-accessible" style="width: 100%;" tabindex="-1" aria-hidden="true" id="customer_name" name="customer_name">
-                                                    <option selected disabled>-- Select Customer --</option>
-                                                    @foreach($users as $key => $names)
-                                                        <option value="{{ $names->name }}" {{ old('full_name') == $names->name ? "selected" :""}}>{{ $names->name }}</option>
-                                                    @endforeach
-                                                </select>
+                                                     <input class="form-control @error('customer_name') is-invalid @enderror" type="text" id="customer_name" name="customer_name" placeholder="Enter Reference Number" value="{{ old('customer_name') }}">
+                                          
                                             </div>
                                             <div class="form-group">
                                                 <label>Po Number</label>
-                                                <input class="form-control @error('po_number') is-invalid @enderror" type="text" id="po_number" name="po_number" placeholder="Enter Reference Number" value="{{ old('po_number') }}">
+                                                <input class="form-control @error('po_number') is-invalid @enderror" type="text" id="po_number" name="po_number" placeholder="Enter Name" value="{{ old('po_number') }}">
                                             </div>
                                         </div>
                                         

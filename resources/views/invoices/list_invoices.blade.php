@@ -1,408 +1,220 @@
 @extends('layouts.master')
+
 @section('content')
-    {{-- message --}}
+    {{-- flash messages --}}
     {!! Toastr::message() !!}
+
     <div class="page-wrapper">
         <div class="content container-fluid">
-            <div class="page-header">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <h3 class="page-title">Invoices</h3>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-                            <li class="breadcrumb-item active">Invoices</li>
-                        </ul>
+
+         
+            @php
+                // total invoices
+                $totalCount   = $invoiceList->count();
+                $totalAmount  = $invoiceList->sum('total_amount');
+
+                // by status
+                $paidCount    = $invoiceList->where('status', 'Paid')->count();
+                $paidAmount   = $invoiceList->where('status', 'Paid')->sum('total_amount');
+
+                $overdueCount = $invoiceList->where('status', 'Overdue')->count();
+                $overdueAmt   = $invoiceList->where('status', 'Overdue')->sum('total_amount');
+
+                $cancelCount  = $invoiceList->where('status', 'Cancelled')->count();
+                $cancelAmt    = $invoiceList->where('status', 'Cancelled')->sum('total_amount');
+
+                $unpaidList   = $invoiceList->filter(fn($i) => !in_array($i->status, ['Paid','Cancelled']));
+                $unpaidCount  = $unpaidList->count();
+                $unpaidAmt    = $unpaidList->sum('total_amount');
+            @endphp
+
+            <style>
+          
+            .filter-bar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+            }
+            .filter-bar .form-control {
+                min-width: 150px;
+                transition: box-shadow .2s;
+            }
+            .filter-bar .form-control:focus {
+                box-shadow: 0 0 .25rem rgba(0,123,255,.5);
+            }
+            .filter-bar .btn {
+                padding: .5rem 1.25rem;
+                transition: background-color .2s, transform .1s;
+            }
+            .filter-bar .btn:hover {
+                transform: translateY(-1px);
+            }
+            </style>
+
+            <div class="page-header d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="page-title mb-0">Invoices</h3>
+                    <ul class="breadcrumb p-0 mb-0">
+                        <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Invoices</li>
+                    </ul>
+                </div>
+                <div>
+                    <a href="{{ route('invoice/list/page') }}" class="invoices-links active me-2"><i class="fa fa-list"></i></a>
+                    <a href="{{ route('invoice/grid/page') }}" class="invoices-links"><i class="fa fa-th"></i></a>
+                </div>
+            </div>
+
+            <div class="card report-card mb-4">
+                <div class="card-body">
+                    <div class="filter-bar">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" id="customerName" class="form-control" placeholder="Customer Name">
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                            <input type="date" id="dateFrom" class="form-control" placeholder="From">
+                            <input type="date" id="dateTo" class="form-control" placeholder="To">
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-book-open"></i></span>
+                            <select id="statusSelect" class="form-select">
+                                <option value="">All Statuses</option>
+                                <option>Paid</option>
+                                <option>Overdue</option>
+                                <option>Draft</option>
+                                <option>Recurring</option>
+                                <option>Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-bookmark"></i></span>
+                            <input type="text" id="categoryName" class="form-control" placeholder="Category">
+                        </div>
+
+                        <button id="btnSearch" class="btn btn-primary"><i class="fas fa-search me-1"></i>Search</button>
+                        <button id="btnClear" class="btn btn-outline-secondary"><i class="fas fa-eraser me-1"></i>Clear</button>
                     </div>
                 </div>
             </div>
 
-            <div class="page-header">
-                <div class="row align-items-center">
-                    <div class="col"></div>
-                    <div class="col-auto">
-                        <a href="{{ route('invoice/list/page') }}" class="invoices-links active">
-                            <i class="fa fa-list" aria-hidden="true"></i>
-                        </a>
-                        <a href="{{ route('invoice/grid/page') }}" class="invoices-links">
-                            <i class="fa fa-th" aria-hidden="true"></i>
-                        </a>
-                    </div>
-                </div>
+
+            <div class="d-flex justify-content-center align-items-center mb-4">
+                <a href="{{ route('invoice/add/page') }}" class="btn btn-success">
+                    <i class="feather feather-plus-circle me-1"></i>New Invoice
+                </a>
             </div>
 
-            <div class="card report-card">
-                <div class="card-body pb-0">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <ul class="app-listing">
-                                <li>
-                                    <div class="multipleSelection">
-                                        <div class="selectBox">
-                                            <p class="mb-0"><i class="fas fa-user-plus me-1 select-icon"></i> Select
-                                                User</p>
-                                            <span class="down-icon"><i class="fas fa-chevron-down"></i></span>
-                                        </div>
-                                        <div id="checkBoxes">
-                                            <form action="#">
-                                                <p class="checkbox-title">Customer Search</p>
-                                                <div class="form-custom">
-                                                    <input type="text" class="form-control bg-grey"
-                                                        placeholder="Enter Customer Name">
-                                                </div>
-                                                <div class="selectBox-cont">
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Brian Johnson
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Russell Copeland
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Greg Lynch
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> John Blair
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Barbara Moore
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Hendry Evan
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="username">
-                                                        <span class="checkmark"></span> Richard Miles
-                                                    </label>
-                                                </div>
-                                                <button type="submit" class="btn w-100 btn-primary">Apply</button>
-                                                <button type="reset" class="btn w-100 btn-grey">Reset</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="multipleSelection">
-                                        <div class="selectBox">
-                                            <p class="mb-0"><i class="fas fa-calendar me-1 select-icon"></i> Select
-                                                Date</p>
-                                            <span class="down-icon"><i class="fas fa-chevron-down"></i></span>
-                                        </div>
-                                        <div id="checkBoxes">
-                                            <form action="#">
-                                                <p class="checkbox-title">Date Filter</p>
-                                                <div class="selectBox-cont selectBox-cont-one h-auto">
-                                                    <div class="date-picker">
-                                                        <div class="form-custom cal-icon">
-                                                            <input class="form-control datetimepicker" type="text"
-                                                                placeholder="Form">
-                                                        </div>
-                                                    </div>
-                                                    <div class="date-picker pe-0">
-                                                        <div class="form-custom cal-icon">
-                                                            <input class="form-control datetimepicker" type="text"
-                                                                placeholder="To">
-                                                        </div>
-                                                    </div>
-                                                    <div class="date-list">
-                                                        <ul>
-                                                            <li><a href="#" class="btn date-btn">Today</a></li>
-                                                            <li><a href="#" class="btn date-btn">Yesterday</a></li>
-                                                            <li><a href="#" class="btn date-btn">Last 7 days</a>
-                                                            </li>
-                                                            <li><a href="#" class="btn date-btn">This month</a></li>
-                                                            <li><a href="#" class="btn date-btn">Last month</a></li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="multipleSelection">
-                                        <div class="selectBox">
-                                            <p class="mb-0"><i class="fas fa-book-open me-1 select-icon"></i> Select
-                                                Status</p>
-                                            <span class="down-icon"><i class="fas fa-chevron-down"></i></span>
-                                        </div>
-                                        <div id="checkBoxes">
-                                            <form action="#">
-                                                <p class="checkbox-title">By Status</p>
-                                                <div class="selectBox-cont">
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name" checked>
-                                                        <span class="checkmark"></span> All Invoices
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name">
-                                                        <span class="checkmark"></span> Paid
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name">
-                                                        <span class="checkmark"></span> Overdue
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name">
-                                                        <span class="checkmark"></span> Draft
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name">
-                                                        <span class="checkmark"></span> Recurring
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="name">
-                                                        <span class="checkmark"></span> Cancelled
-                                                    </label>
-                                                </div>
-                                                <button type="submit" class="btn w-100 btn-primary">Apply</button>
-                                                <button type="reset" class="btn w-100 btn-grey">Reset</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="multipleSelection">
-                                        <div class="selectBox">
-                                            <p class="mb-0"><i class="fas fa-bookmark me-1 select-icon"></i> By
-                                                Category</p>
-                                            <span class="down-icon"><i class="fas fa-chevron-down"></i></span>
-                                        </div>
-                                        <div id="checkBoxes">
-                                            <form action="#">
-                                                <p class="checkbox-title">Category</p>
-                                                <div class="form-custom">
-                                                    <input type="text" class="form-control bg-grey"
-                                                        placeholder="Enter Category Name">
-                                                </div>
-                                                <div class="selectBox-cont">
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Advertising
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Food
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Marketing
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Repairs
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Software
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Stationary
-                                                    </label>
-                                                    <label class="custom_check w-100">
-                                                        <input type="checkbox" name="category">
-                                                        <span class="checkmark"></span> Travel
-                                                    </label>
-                                                </div>
-                                                <button type="submit" class="btn w-100 btn-primary">Apply</button>
-                                                <button type="reset" class="btn w-100 btn-grey">Reset</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </li>
-                                <li>
-                                    <div class="report-btn">
-                                        <a href="#" class="btn">
-                                            <img src="assets/img/icons/invoices-icon5.png" alt="" class="me-2">
-                                            Generate report
-                                        </a>
-                                    </div>
-                                </li>
-                            </ul>
+         
+            <div class="row mb-4 text-center">
+                @foreach([
+                    ['icon1.svg','All Invoices',$totalAmount,$totalCount],
+                    ['icon2.svg','Paid',$paidAmount,$paidCount],
+                    ['icon3.svg','Unpaid',$unpaidAmt,$unpaidCount],
+                    ['icon4.svg','Cancelled',$cancelAmt,$cancelCount],
+                ] as [$icon,$label,$amount,$count])
+                    <div class="col-lg-3 col-sm-6 mb-3">
+                        <div class="card inovices-card h-100 shadow-sm">
+                            <div class="card-body">
+                                <img src="{{ URL::to("assets/img/icons/{$icon}") }}" class="mb-2" alt="">
+                                <h5 class="mb-1">${{ number_format($amount, 2) }}</h5>
+                                <p class="mb-0 small text-muted">{{ $label }} ({{ $count }})</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endforeach
             </div>
 
-            <div class="card invoices-tabs-card border-0">
-                <div class="card-body card-body pt-0 pb-0">
-                    <div class="invoices-main-tabs">
-                        <div class="row align-items-center">
-                            <div class="col-lg-8 col-md-8">
-                                <div class="invoices-tabs">
-                                    <ul>
-                                        <li><a class="active" href="{{ route('invoice/list/page') }}">All Invoice</a></li>
-                                        <li><a href="{{ route('invoice/paid/page') }}">Paid</a></li>
-                                        <li><a href="{{ route('invoice/overdue/page') }}">Overdue</a></li>
-                                        <li><a href="{{ route('invoice/draft/page') }}">Draft</a></li>
-                                        <li><a href="{{ route('invoice/recurring/page') }}">Recurring</a></li>
-                                        <li><a href="{{ route('invoice/cancelled/page') }}">Cancelled</a></li>
-                                    </ul>
-                                </div> 
-                            </div>
-                            <div class="col-lg-4 col-md-4">
-                                <div class="invoices-settings-btn">
-                                    <a href="invoices-settings.html" class="invoices-settings-icon">
-                                        <i class="feather feather-settings"></i>
-                                    </a>
-                                    <a href="{{ route('invoice/add/page') }}" class="btn">
-                                        <i class="feather feather-plus-circle"></i> New Invoice
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-xl-3 col-sm-6 col-12">
-                    <div class="card inovices-card">
-                        <div class="card-body">
-                            <div class="inovices-widget-header">
-                                <span class="inovices-widget-icon">
-                                    <img src="{{ URL::to('assets/img/icons/invoices-icon1.svg') }}" alt="">
-                                </span>
-                                <div class="inovices-dash-count">
-                                    <div class="inovices-amount">$8,78,797</div>
-                                </div>
-                            </div>
-                            <p class="inovices-all">All Invoices <span>50</span></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-sm-6 col-12">
-                    <div class="card inovices-card">
-                        <div class="card-body">
-                            <div class="inovices-widget-header">
-                                <span class="inovices-widget-icon">
-                                    <img src="{{ URL::to('assets/img/icons/invoices-icon2.svg') }}" alt="">
-                                </span>
-                                <div class="inovices-dash-count">
-                                    <div class="inovices-amount">$4,5884</div>
-                                </div>
-                            </div>
-                            <p class="inovices-all">Paid Invoices <span>60</span></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-sm-6 col-12">
-                    <div class="card inovices-card">
-                        <div class="card-body">
-                            <div class="inovices-widget-header">
-                                <span class="inovices-widget-icon">
-                                    <img src="{{ URL::to('assets/img/icons/invoices-icon3.svg') }}" alt="">
-                                </span>
-                                <div class="inovices-dash-count">
-                                    <div class="inovices-amount">$2,05,545</div>
-                                </div>
-                            </div>
-                            <p class="inovices-all">Unpaid Invoices <span>70</span></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-xl-3 col-sm-6 col-12">
-                    <div class="card inovices-card">
-                        <div class="card-body">
-                            <div class="inovices-widget-header">
-                                <span class="inovices-widget-icon">
-                                    <img src="{{ URL::to('assets/img/icons/invoices-icon4.svg') }}" alt="">
-                                </span>
-                                <div class="inovices-dash-count">
-                                    <div class="inovices-amount">$8,8,797</div>
-                                </div>
-                            </div>
-                            <p class="inovices-all">Cancelled Invoices <span>80</span></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-sm-12">
-                    <div class="card card-table">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-stripped table-hover datatable">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>Invoice ID</th>
-                                            <th>Category</th>
-                                            <th>Created on</th>
-                                            <th>Invoice to</th>
-                                            <th>Amount</th>
-                                            <th>Due date</th>
-                                            <th>Status</th>
-                                            <th class="text-end">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($invoiceList as $key => $value)
-                                        <tr>
-                                            <td>
-                                                <label class="custom_check">
-                                                    <input type="checkbox" name="invoice">
-                                                    <span class="checkmark"></span>
-                                                </label>
-                                                <a href="{{ url('invoice/edit/'.$value->invoice_id) }}" class="invoice-link">{{ $value->invoice_id }}</a>
-                                            </td>
-                                            <td>{{ $value->category }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($value->created_at)->format('d M Y') }}</td>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="profile.html">
-                                                        <img class="avatar avatar-sm me-2 avatar-img rounded-circle" src="{{ URL::to('/images/photo_defaults.jpg') }}" alt=""> {{ $value->customer_name }}
-                                                    </a>
-                                                </h2>
-                                            </td>
-                                            <td class="text-primary">$ {{ $value->total_amount }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($value->due_date)->format('d M Y') }}</td>
-                                            <td><span class="badge bg-success-light">Paid</span></td>
-                                            <td class="text-end">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle"
-                                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </a>
-                                                    <div class="dropdown-menu dropdown-menu-end">
-                                                        <a class="dropdown-item" href="edit-invoice.html">
-                                                            <i class="far fa-edit me-2"></i>Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="{{ url('invoice/view/'.$value->invoice_id) }}">
-                                                            <i class="far fa-eye me-2"></i>View Detail
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0);">
-                                                            <i class="far fa-trash-alt me-2"></i>Delete
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0);">
-                                                            <i class="far fa-check-circle me-2"></i>Mark as sent
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0);">
-                                                            <i class="far fa-paper-plane me-2"></i>Send Invoice
-                                                        </a>
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="far fa-copy me-2"></i>Clone Invoice
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+            {{-- invoices table --}}
+            <div class="card card-table shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table id="invoicesTable" class="table table-striped mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID</th><th>Category</th><th>Created</th>
+                                    <th>Customer</th><th>Amount</th><th>Due</th><th>Status</th><th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoiceList as $i)
+                                <tr>
+                                    <td><a href="{{ url('invoice/edit/'.$i->invoice_id) }}">{{ $i->invoice_id }}</a></td>
+                                    <td class="cell-category">{{ $i->category }}</td>
+                                    <td class="cell-created">{{ \Carbon\Carbon::parse($i->created_at)->format('Y-m-d') }}</td>
+                                    <td class="cell-customer">{{ $i->customer_name }}</td>
+                                    <td>${{ number_format($i->total_amount,2) }}</td>
+                                    <td class="cell-due">{{ \Carbon\Carbon::parse($i->due_date)->format('Y-m-d') }}</td>
+                                    <td class="cell-status">{{ $i->status }}</td>
+                                    <td class="text-end">
+                                        <div class="dropdown">
+                                            <a href="#" class="action-icon" data-bs-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </a>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="{{ url('invoice/edit/'.$i->invoice_id) }}">
+                                                    <i class="far fa-edit me-1"></i>Edit</a>
+                                                </li>
+                                                <li><a class="dropdown-item" href="{{ url('invoice/view/'.$i->invoice_id) }}">
+                                                    <i class="far fa-eye me-1"></i>View</a>
+                                                </li>
+                                                <li><a class="dropdown-item text-danger" href="#">
+                                                    <i class="far fa-trash-alt me-1"></i>Delete</a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
         </div>
     </div>
-@section('script')
 @endsection
+
+@section('script')
+<script>
+document.getElementById('btnSearch').addEventListener('click', filterTable);
+document.getElementById('btnClear').addEventListener('click', clearFilters);
+
+function filterTable() {
+    const name = document.getElementById('customerName').value.toLowerCase(),
+          cat  = document.getElementById('categoryName').value.toLowerCase(),
+          from = document.getElementById('dateFrom').value,
+          to   = document.getElementById('dateTo').value,
+          stat = document.getElementById('statusSelect').value;
+
+    document.querySelectorAll('#invoicesTable tbody tr').forEach(r => {
+        const cName    = r.querySelector('.cell-customer').textContent.toLowerCase(),
+              cCat     = r.querySelector('.cell-category').textContent.toLowerCase(),
+              cCreated = r.querySelector('.cell-created').textContent,
+              cStat    = r.querySelector('.cell-status').textContent;
+
+        let visible = true;
+        if (name && !cName.includes(name))          visible = false;
+        if (cat  && !cCat.includes(cat))            visible = false;
+        if (from && cCreated < from)                visible = false;
+        if (to   && cCreated > to)                  visible = false;
+        if (stat && stat !== '' && cStat !== stat)  visible = false;
+
+        r.style.display = visible ? '' : 'none';
+    });
+}
+
+function clearFilters() {
+    ['customerName','categoryName','dateFrom','dateTo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('statusSelect').value = '';
+    document.querySelectorAll('#invoicesTable tbody tr').forEach(r => r.style.display = '');
+}
+</script>
 @endsection
