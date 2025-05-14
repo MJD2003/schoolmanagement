@@ -3,19 +3,32 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use DB;
 use App\Models\Teacher;
+use App\Models\Department;
+use App\Models\Subject;
 use Brian2694\Toastr\Facades\Toastr;
 
 class TeacherController extends Controller
 {
-    
+    /** Dashboard with real data */
+    public function dashboard()
+    {
+        $totalTeachers    = Teacher::count();
+        $totalDepartments = Department::count();
+        $totalSubjects    = Subject::count();
+
+        return view('teacher.dashboard', compact(
+            'totalTeachers',
+            'totalDepartments',
+            'totalSubjects'
+        ));
+    }
+
     public function teacherAdd()
     {
         return view('teacher.add-teacher');
     }
 
- 
     public function teacherList()
     {
         $listTeacher = Teacher::all();
@@ -30,7 +43,7 @@ class TeacherController extends Controller
 
     public function saveRecord(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'full_name'     => 'required|string|max:255',
             'gender'        => 'required|string|in:Female,Male,Other',
             'experience'    => 'required|string|max:100',
@@ -45,31 +58,18 @@ class TeacherController extends Controller
         ]);
 
         try {
-            $teacher = new Teacher;
-            $teacher->full_name     = $request->full_name;
-            $teacher->gender        = $request->gender;
-            $teacher->experience    = $request->experience;
-            $teacher->qualification = $request->qualification;
-            $teacher->date_of_birth = \Carbon\Carbon::createFromFormat('d-m-Y', $request->date_of_birth);
-            $teacher->phone_number  = $request->phone_number;
-            $teacher->address       = $request->address;
-            $teacher->city          = $request->city;
-            $teacher->state         = $request->state;
-            $teacher->zip_code      = $request->zip_code;
-            $teacher->country       = $request->country;
-            $teacher->save();
+            $data['date_of_birth'] = \Carbon\Carbon::createFromFormat('d-m-Y', $data['date_of_birth']);
+            Teacher::create($data);
 
-            Toastr::success('Teacher has been added successfully.', 'Success');
-            return redirect()->route('teacher/list/page');
-
+            Toastr::success('Teacher added successfully.', 'Success');
+            return redirect()->route('teacher.list');
         } catch (\Exception $e) {
-            \Log::error('Error saving teacher: '.$e->getMessage());
-            Toastr::error('Failed to add new teacher.', 'Error');
-            return redirect()->back()->withInput();
+            \Log::error('Error saving teacher: ' . $e->getMessage());
+            Toastr::error('Failed to add teacher.', 'Error');
+            return back()->withInput();
         }
     }
 
-   
     public function editRecord($id)
     {
         $teacher = Teacher::findOrFail($id);
@@ -78,7 +78,7 @@ class TeacherController extends Controller
 
     public function updateRecordTeacher(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'id'            => 'required|integer|exists:teachers,id',
             'full_name'     => 'required|string|max:255',
             'gender'        => 'required|string|in:Female,Male,Other',
@@ -93,53 +93,31 @@ class TeacherController extends Controller
             'country'       => 'required|string|max:100',
         ]);
 
-        DB::beginTransaction();
         try {
-            $updateData = [
-                'full_name'     => $request->full_name,
-                'gender'        => $request->gender,
-                'experience'    => $request->experience,
-                'qualification' => $request->qualification,
-                'date_of_birth' => \Carbon\Carbon::createFromFormat('d-m-Y', $request->date_of_birth),
-                'phone_number'  => $request->phone_number,
-                'address'       => $request->address,
-                'city'          => $request->city,
-                'state'         => $request->state,
-                'zip_code'      => $request->zip_code,
-                'country'       => $request->country,
-            ];
+            $data['date_of_birth'] = \Carbon\Carbon::createFromFormat('d-m-Y', $data['date_of_birth']);
+            Teacher::where('id', $data['id'])->update($data);
 
-            Teacher::where('id', $request->id)->update($updateData);
-
-            DB::commit();
-            Toastr::success('Teacher has been updated successfully.', 'Success');
-            return redirect()->route('teacher/list/page');
-
+            Toastr::success('Teacher updated successfully.', 'Success');
+            return redirect()->route('teacher.list');
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error updating teacher: '.$e->getMessage());
+            \Log::error('Error updating teacher: ' . $e->getMessage());
             Toastr::error('Failed to update teacher.', 'Error');
-            return redirect()->back()->withInput();
+            return back()->withInput();
         }
     }
 
     public function teacherDelete(Request $request)
     {
-        $request->validate([
-            'id' => 'required|integer|exists:teachers,id'
-        ]);
+        $request->validate(['id' => 'required|integer|exists:teachers,id']);
 
-        DB::beginTransaction();
         try {
             Teacher::destroy($request->id);
-            DB::commit();
-            Toastr::success('Teacher has been deleted successfully.', 'Success');
-            return redirect()->back();
+            Toastr::success('Teacher deleted successfully.', 'Success');
+            return back();
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error deleting teacher: '.$e->getMessage());
+            \Log::error('Error deleting teacher: ' . $e->getMessage());
             Toastr::error('Failed to delete teacher.', 'Error');
-            return redirect()->back();
+            return back();
         }
     }
 }

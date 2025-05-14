@@ -3,43 +3,50 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Student;
+use App\Models\Teacher;
+use App\Models\Department;
+use App\Models\InvoiceCustomerName;
+use Brian2694\Toastr\Facades\Toastr;
 
 class HomeController extends Controller
 {
-    /**
-     * Create a new controller instance.
-     *
-     * @return void
-     */
     public function __construct()
     {
         $this->middleware('auth');
     }
 
     /**
-    * Show the application dashboard.
-    *
-    * @return \Illuminate\Contracts\Support\Renderable
-    */
-    /** home dashboard */
+     * Show the dashboard with real‑time data (no revenue/payment).
+     */
     public function index()
     {
-        return view('dashboard.home');
+        // Core entity counts
+        $studentCount    = Student::count();
+        $teacherCount    = Teacher::count();
+        $departmentCount = Department::count();
+
+        // Just total invoices—no payment/revenue details
+        $totalInvoices = InvoiceCustomerName::count();
+
+        return view('dashboard.home', compact(
+            'studentCount',
+            'teacherCount',
+            'departmentCount',
+            'totalInvoices'
+        ));
     }
 
-    /** profile user */
     public function userProfile()
     {
         return view('dashboard.profile');
     }
 
-    /** teacher dashboard */
     public function teacherDashboardIndex()
     {
         return view('dashboard.teacher_dashboard');
     }
 
-    /** student dashboard */
     public function studentDashboardIndex()
     {
         return view('dashboard.student_dashboard');
