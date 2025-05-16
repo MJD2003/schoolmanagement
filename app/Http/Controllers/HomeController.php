@@ -8,6 +8,8 @@ use App\Models\Teacher;
 use App\Models\Department;
 use App\Models\InvoiceCustomerName;
 use Brian2694\Toastr\Facades\Toastr;
+use Carbon\Carbon;
+use DB;
 
 class HomeController extends Controller
 {
@@ -16,24 +18,58 @@ class HomeController extends Controller
         $this->middleware('auth');
     }
 
-    /**
-     * Show the dashboard with real‑time data (no revenue/payment).
-     */
+
     public function index()
     {
-        // Core entity counts
+   
         $studentCount    = Student::count();
         $teacherCount    = Teacher::count();
         $departmentCount = Department::count();
+        $totalInvoices   = InvoiceCustomerName::count();
 
-        // Just total invoices—no payment/revenue details
-        $totalInvoices = InvoiceCustomerName::count();
+
+        $start  = Carbon::now()->subYear()->startOfMonth();
+        $months = [];
+        for ($i = 0; $i <= 12; $i++) {
+            $months[] = $start->copy()->addMonths($i)->format('M Y');
+        }
+
+        $studentData = Student::select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as month"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->where('created_at', '>=', $start)
+            ->groupBy('month')
+            ->orderBy(DB::raw("MIN(created_at)"))
+            ->pluck('total', 'month')
+            ->toArray();
+
+      
+        $teacherData = Teacher::select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as month"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->where('created_at', '>=', $start)
+            ->groupBy('month')
+            ->orderBy(DB::raw("MIN(created_at)"))
+            ->pluck('total', 'month')
+            ->toArray();
+
+        $studentsPerMonth = [];
+        $teachersPerMonth = [];
+        foreach ($months as $m) {
+            $studentsPerMonth[] = $studentData[$m] ?? 0;
+            $teachersPerMonth[] = $teacherData[$m] ?? 0;
+        }
 
         return view('dashboard.home', compact(
             'studentCount',
             'teacherCount',
             'departmentCount',
-            'totalInvoices'
+            'totalInvoices',
+            'months',
+            'studentsPerMonth',
+            'teachersPerMonth'
         ));
     }
 
@@ -44,11 +80,11 @@ class HomeController extends Controller
 
     public function teacherDashboardIndex()
     {
-        return view('dashboard.teacher_dashboard');
+        return redirect()->route('home');
     }
 
     public function studentDashboardIndex()
     {
-        return view('dashboard.student_dashboard');
+        return redirect()->route('home');
     }
 }

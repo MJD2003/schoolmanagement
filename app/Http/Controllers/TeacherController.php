@@ -10,7 +10,6 @@ use Brian2694\Toastr\Facades\Toastr;
 
 class TeacherController extends Controller
 {
-    /** Dashboard with real data */
     public function dashboard()
     {
         $totalTeachers    = Teacher::count();
